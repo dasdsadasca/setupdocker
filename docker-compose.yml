@@ -4,8 +4,8 @@ services:
   eth-security:
     image: trailofbits/eth-security-toolbox
     volumes:
-      - ./contracts:/contracts  # Mount your smart contracts directory
-    working_dir: /contracts
+      - .:/project  # Mount the entire project directory
+    working_dir: /project
     stdin_open: true
     tty: true
     command: >
