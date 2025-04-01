@@ -1,0 +1,262 @@
+# Web3 Security Testing Environment
+
+A Docker-based environment for Web3 security testing, including fuzzing, static analysis, and symbolic execution tools.
+
+## Quick Start
+
+1. Create a new directory for your project
+2. Create a `contracts` folder
+3. Copy this `docker-compose.yml`:
+```yaml
+version: '3.8'
+
+services:
+  eth-security:
+    image: trailofbits/eth-security-toolbox
+    volumes:
+      - ./contracts:/contracts
+    working_dir: /contracts
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+        solc-select install 0.8.20 &&
+        solc-select use 0.8.20 &&
+        /bin/bash
+      "
+```
+
+4. Start the container:
+```bash
+docker-compose up -d
+docker-compose exec eth-security bash
+```
+
+## Available Tools
+
+### 1. Echidna (Fuzzing)
+
+Echidna is a powerful fuzzing tool for smart contracts. It tests your contracts by trying to find inputs that violate your properties.
+
+Basic usage:
+```bash
+cd /contracts
+# Test a single contract
+echidna YourContract.sol --test-mode assertion
+
+# Test all contracts in a directory
+echidna . --test-mode assertion
+
+# Test specific directory
+echidna ./src/ --test-mode assertion
+```
+
+Advanced options:
+```bash
+# Run with more test cases
+echidna . --test-mode assertion --test-limit 5000
+
+# Generate test corpus
+echidna . --test-mode assertion --corpus-dir corpus
+
+# Run with multiple workers
+echidna . --test-mode assertion --workers 4
+
+# Run with specific sequence length
+echidna . --test-mode assertion --seq-len 100
+
+# Exclude specific files/directories
+echidna . --test-mode assertion --exclude-path "test/,mocks/"
+```
+
+Writing Echidna tests:
+```solidity
+// In your contract
+function echidna_test_property() public view returns (bool) {
+    // Your property here
+    return someCondition;
+}
+```
+
+### 2. Slither (Static Analysis)
+
+Slither performs static analysis on your contracts to find vulnerabilities.
+
+Basic usage:
+```bash
+cd /contracts
+# Analyze a single contract
+slither YourContract.sol
+
+# Analyze all contracts in current directory
+slither .
+
+# Analyze specific directory
+slither ./src/
+
+# Analyze multiple directories
+slither ./src/ ./test/
+```
+
+Advanced options:
+```bash
+# Generate a detailed report
+slither . --json report.json
+
+# Check for specific vulnerabilities
+slither . --detect reentrancy-eth
+
+# Generate inheritance graph
+slither . --print inheritance-graph
+
+# Run specific detectors
+slither . --detect unchecked-transfer
+
+# Exclude specific files/directories
+slither . --exclude-path "test/,mocks/"
+
+# Generate a comprehensive report
+slither . --json report.json --checklist
+
+# Generate a markdown report
+slither . --markdown report.md
+```
+
+### 3. Manticore (Symbolic Execution)
+
+Manticore performs symbolic execution to find potential vulnerabilities.
+
+Basic usage:
+```bash
+cd /contracts
+# Analyze a single contract
+manticore YourContract.sol
+
+# Analyze all contracts in current directory
+manticore .
+
+# Analyze specific directory
+manticore ./src/
+```
+
+Advanced options:
+```bash
+# Run with specific timeout
+manticore . --timeout 300
+
+# Generate test cases
+manticore . --testcase
+
+# Run with specific gas limit
+manticore . --gaslimit 1000000
+
+# Exclude specific files
+manticore . --exclude "test/*"
+```
+
+## Example Contract with Tests
+
+Here's an example of a contract with Echidna tests:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Example {
+    uint256 public value;
+    
+    function setValue(uint256 _value) public {
+        value = _value;
+    }
+    
+    // Echidna test functions
+    function echidna_test_value() public view returns (bool) {
+        return value >= 0;
+    }
+    
+    function echidna_test_value_bounds() public view returns (bool) {
+        return value <= type(uint256).max;
+    }
+}
+```
+
+## Common Use Cases
+
+### Fuzzing for Reentrancy
+```solidity
+// Test for reentrancy vulnerability
+function echidna_test_reentrancy() public view returns (bool) {
+    return address(this).balance >= balances[msg.sender];
+}
+```
+
+### Testing Access Control
+```solidity
+// Test for access control
+function echidna_test_access() public view returns (bool) {
+    return owner == msg.sender || !isRestricted;
+}
+```
+
+### Testing State Invariants
+```solidity
+// Test state invariants
+function echidna_test_invariants() public view returns (bool) {
+    return totalSupply == sumOfBalances();
+}
+```
+
+## Tips and Best Practices
+
+1. Always start with basic tests and gradually add more complex ones
+2. Use `--test-limit` to control the number of test cases
+3. Use `--corpus-dir` to save and reuse test cases
+4. Combine multiple tools for better coverage:
+   ```bash
+   # Run all tools on entire project
+   slither .
+   echidna . --test-mode assertion
+   manticore .
+   ```
+
+5. Use Echidna's test modes:
+   - `assertion`: Test for assertion violations
+   - `optimization`: Find optimal values
+   - `dtest`: Run deterministic tests
+
+6. For large projects:
+   - Use `--exclude-path` to skip test files and mocks
+   - Start with a subset of contracts and gradually expand
+   - Use `--workers` to parallelize testing
+   - Use `--test-limit` to control test duration
+
+## Troubleshooting
+
+1. If Echidna fails to start:
+   ```bash
+   solc-select use 0.8.20  # Set Solidity version
+   ```
+
+2. If tests are slow:
+   ```bash
+   # Reduce test limit
+   echidna . --test-limit 1000
+   ```
+
+3. If you need more detailed output:
+   ```bash
+   # Add verbose flag
+   echidna . --verbose
+   ```
+
+4. If you get memory errors with large projects:
+   ```bash
+   # Run with fewer workers
+   echidna . --workers 2
+   ```
+
+5. If you want to skip certain files:
+   ```bash
+   # Exclude test files and mocks
+   slither . --exclude-path "test/,mocks/"
+   ```
