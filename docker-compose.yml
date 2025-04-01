@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  eth-security:
+    image: trailofbits/eth-security-toolbox
+    volumes:
+      - ./contracts:/contracts  # Mount your smart contracts directory
+    working_dir: /contracts
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+        solc-select install 0.8.20 &&
+        solc-select use 0.8.20 &&
+        /bin/bash
+      " 
